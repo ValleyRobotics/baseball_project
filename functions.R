@@ -57,12 +57,22 @@ added_HR_bin = stats %>% mutate(HR_bin=cut(stats$HR, breaks=breaks, include.lowe
 added_HR_bin %>% group_by(HR_bin) %>% summarise(n=n(), m_HR=mean(HR), m_age=mean(age), min_age=min(age), max_age=max(age))
 
 mean_age_of_all_batters <- added_HR_bin %>% summarise(mean(age))
+mean_age_of_all_batters
 y = c(seq(1920, 2020, by=5))
 
 
 y
 x = s%>% mutate(y_bin=cut(yearID, breaks=y, include.lowest=TRUE, right=FALSE))
 view(x%>%filter (yearID>1920, HR>40) %>% arrange(desc(HR)))
+# max year ####
+view(added_HR_bin)
+x = added_HR_bin%>% mutate(y_bin=cut(yearID, breaks=y, include.lowest=TRUE, right=FALSE))
+max_hr_year_stat<-(x %>% filter(HR> 20) %>% group_by(playerID) %>% top_n(1,HR) %>% arrange(desc(HR)))
+max_hr_year_stat %>% group_by(y_bin) %>% summarize(mean(age), mean(HR),n=n())
+view(max_hr_year_stat %>% group_by(y_bin, HR_bin) %>% summarize(mean(age), mean(HR),n=n()))
+view(max_hr_year_stat)
+#head(x %>% select(playerID,HR, yearID) %>% filter(HR>40) %>% which.max(HR),100)
+
 z=x%>% group_by(y_bin, HR_bin) %>% summarise(n=n(), m_HR=mean(HR), m_age=mean(age), min_age=min(age), max_age=max(age))
 view(z)
 
