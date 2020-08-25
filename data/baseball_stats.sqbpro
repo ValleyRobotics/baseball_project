@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="/Users/paulsprouse/OneDrive/NYDS/R_files/baseball_project/data/baseball_stats.db" readonly="0" foreign_keys="" case_sensitive_like="" temp_store="" wal_autocheckpoint="" synchronous=""/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="4728"/><column_width id="4" width="0"/></tab_structure><tab_browse><current_table name="0,0:"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="batting_data_1920_.sql">select batting.playerID,
+batting.yearID,
+people.nameFirst,
+People.nameLast,
+(batting.yearID - people.birthYear) as age,
+people.weight,
+&quot;Batting&quot;.&quot;teamID&quot;, &quot;Batting&quot;.&quot;lgID&quot;, &quot;Batting&quot;.&quot;G&quot;, &quot;Batting&quot;.&quot;AB&quot;, &quot;Batting&quot;.&quot;R&quot;, &quot;Batting&quot;.&quot;H&quot;, &quot;Batting&quot;.&quot;2B&quot;, &quot;Batting&quot;.&quot;3B&quot;, &quot;Batting&quot;.&quot;HR&quot;, &quot;Batting&quot;.&quot;RBI&quot;, &quot;Batting&quot;.&quot;SB&quot;, &quot;Batting&quot;.&quot;CS&quot;, &quot;Batting&quot;.&quot;BB&quot;, &quot;Batting&quot;.&quot;SO&quot;, &quot;Batting&quot;.&quot;IBB&quot;, &quot;Batting&quot;.&quot;HBP&quot;, &quot;Batting&quot;.&quot;SH&quot;, &quot;Batting&quot;.&quot;SF&quot;,
+people.birthYear,
+people.birthMonth,
+people.bats,
+(people.finalGame-people.debut) as num_years
+
+from batting
+inner join people on batting.playerID = people.playerID
+where yearID &gt; 1920 and num_years &gt; 5
+;
+</sql><sql name="&amp;Optimize">PRAGMA optimize;</sql><current_tab id="0"/></tab_sql></sqlb_project>
