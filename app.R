@@ -7,6 +7,7 @@ library(DBI)
 library(RSQLite)
 library(DT)
 library(shinythemes)
+library(shinydashboard)
 
 
 # data connection to db ####
@@ -14,59 +15,39 @@ connector <- function(con, db) {
     con <- dbConnect(SQLite(), db)
     return (con)
 }
-
 dbcon <- connector(con, "baseball_stats.db")
 as.data.frame(dbListTables(dbcon))
-
 stats <- dbReadTable(dbcon, 'bat_p')
-# The steriod list from - https://bleacherreport.com/articles/232808-steroidology-l-hoops-projects-all-104-players-on-the-2003-steroid-list ####
+# The steroid list from - https://bleacherreport.com/articles/232808-steroidology-l-hoops-projects-all-104-players-on-the-2003-steroid-list ####
 the_list <- read_csv('steroid_list.csv')
-dbDisconnect(dbcon)
-# disconnect
+dbDisconnect(dbcon) # disconnect
 # setting up data####
+# two data frames stats and the list - need to merge into one!
 the_list <- the_list %>% rename(nameLast = last, nameFirst = first)
-stats1 <- stats
-stats1 <-
-    merge(x = stats1,
+stats <-
+    merge(x = stats,
           y = the_list,
           c("nameLast", "nameFirst"),
           all.x = TRUE)
-stats <- stats1
-stats %>% filter(HR > 35) %>% summarise(n = n(),
-                                        m_HR = mean(HR),
-                                        m_age = (mean(age)))
-#stats
 # eliminating columns ####
 stats <-
-    stats %>% select(
-        playerID,
-        yearID,
-        nameFirst,
-        nameLast,
-        age,
-        theList,
-        weight,
-        birthYear,
-        teamID,
-        num_years,
-        G,
-        AB,
-        H,
-        HR
-    )
+    stats %>% select(playerID, yearID, nameFirst, nameLast, age, theList,
+                     weight, birthYear, teamID, num_years, G, AB, H, HR)
 # HR by at Bats ####
 # must have at least one at bat!
-stats <- stats %>% filter(AB > 0) %>% mutate(per_at_bat = HR / AB)
-#view(stats)
+stats <- stats %>% filter(AB > 0) %>% mutate(per_at_bat = HR / AB, b_avg=(H/AB))
+stats <- stats %>% mutate(theList=ifelse(is.na(theList), FALSE, TRUE))
+view(stats)
 # mean number of at bats per season ####
+# used this to decide on how many at bats to use for a season
 num_AB_per_season <-
-    stats %>% filter(HR > 25) %>% group_by(yearID) %>% summarise(n = n(), mean(AB), mean(HR), min(AB), max(AB))
-#view(num_AB_per_season)
+    stats %>% filter(HR > 10) %>% group_by(yearID) %>% summarise(n = n(), mean(AB), mean(HR), min(AB), max(AB)) %>% arrange(desc(`mean(AB)`))
+num_AB_per_season
+mean(num_AB_per_season$`mean(AB)`) # 487 for at least 10 at bats -> using 500 for the data
 # adding new stat to all batters HR per 500 at bats ####
 stats <- stats %>% mutate(HR_per_500 = per_at_bat * 500)
 top_seasons <-
-    stats %>% filter(HR > 35, AB > 200) %>% arrange(desc(HR_per_500))
-top_seasons <- head(top_seasons, 500)
+    stats %>% filter(HR > 35, AB > 200) %>% arrange(desc(HR_per_500)) %>% top_n(500, HR_per_500)
 sum_top <-
     top_seasons %>% group_by(., playerID, theList) %>% summarise(
         n = n(),
@@ -74,17 +55,21 @@ sum_top <-
         max(HR_per_500),
         min(HR_per_500),
         mean(HR_per_500),
-        mean_age_per_top = mean(age)
+        mean_age_per_top = mean(age),
+        max_age=max(age)
     )
-#view(sum_top %>% filter(n>4))
+view(sum_top %>% filter(n>4))
 stats_grouped <-
     stats %>% group_by(playerID) %>% summarise(
         n = n(),
         car_mean_HR = mean(HR),
         car_mean_AB = mean(AB),
-        car_mean_HRp500 = mean(HR_per_500)
+        car_mean_HRp500 = mean(HR_per_500),
+        tot_HR = sum(HR),
+        car_avg = mean(b_avg),
+        max_age = max(age)
     )
-# sum_top_c data ####
+# sum_top_c data and change names####
 sum_top_c <-
     merge(x = sum_top,
           y = stats_grouped,
@@ -100,9 +85,6 @@ names(sum_top_c)[9] <- "Total_Yrs"
 names(sum_top_c)[10] <- "Mean_HR"
 names(sum_top_c)[11] <- "Mean_AB"
 names(sum_top_c)[12] <- "Mean_HR(500)"
-
-#sum_top_c %>% mutate_if(is.numeric, round, digits = 0)
-#view(sum_top_c %>% filter(n.x>4))
 # HR breaks ####
 breaks = c(0, 30, 40, 50, 80)
 #added_HR_bin = cut(stats$HR, breaks=breaks, include.lowest=TRUE, right=FALSE)
@@ -121,6 +103,7 @@ added_HR_bin %>% group_by(HR_bin) %>% summarise(
     max_age = max(age)
 )
 # max year ####
+y = c(seq(1920, 2020, by = 5))
 x = added_HR_bin %>% mutate(y_bin = cut(
     yearID,
     breaks = y,
@@ -132,24 +115,171 @@ max_hr_year_stat <-
 max_hr_year_stat
 max_hr_year_stat %>% group_by(y_bin) %>% summarize(mean(age), mean(HR), n =
                                                        n())
-view(max_hr_year_stat %>% group_by(y_bin, HR_bin) %>% summarize(mean(age), mean(HR), n =
-                                                                    n()))
-view(max_hr_year_stat)
 scat_stat <-
     max_hr_year_stat %>% group_by(y_bin, HR_bin) %>% summarize(mean(age), mean(HR), n =
                                                                    n())
-
 # Stats to select from ####
 mean_age_of_all_batters <- added_HR_bin %>% summarise(mean(age))
 mean_age_of_top_hr_hitters_ster_era <-
     added_HR_bin %>% filter(., HR > 50, yearID > 1993, yearID < 2006) %>% summarise(mean(age))
 mean_age_of_top_not_ster_era <-
     added_HR_bin %>% filter(., HR > 50, yearID < 1994) %>% summarise(mean(age))
-y = c(seq(1920, 2020, by = 5))
 min_hr <- 10
 batting_stats <- read.csv(file = 'data/batting.csv')
 over_x_hr <- batting_stats %>% filter(., HR > min_hr)
 # end of data setup
+# library(shiny)
+# library(dplyr)
+# library(tidyverse)
+# library(ggplot2)
+# library(DBI)
+# library(RSQLite)
+# library(DT)
+# library(shinythemes)
+# library(shinydashboard)
+# 
+# 
+# # data connection to db ####
+# connector <- function(con, db) {
+#     con <- dbConnect(SQLite(), db)
+#     return (con)
+# }
+# 
+# dbcon <- connector(con, "baseball_stats.db")
+# as.data.frame(dbListTables(dbcon))
+# 
+# stats <- dbReadTable(dbcon, 'bat_p')
+# # The steriod list from - https://bleacherreport.com/articles/232808-steroidology-l-hoops-projects-all-104-players-on-the-2003-steroid-list ####
+# the_list <- read_csv('steroid_list.csv')
+# dbDisconnect(dbcon)
+# # disconnect
+# # setting up data####
+# the_list <- the_list %>% rename(nameLast = last, nameFirst = first)
+# stats1 <- stats
+# stats1 <-
+#     merge(x = stats1,
+#           y = the_list,
+#           c("nameLast", "nameFirst"),
+#           all.x = TRUE)
+# stats <- stats1
+# stats %>% filter(HR > 35) %>% summarise(n = n(),
+#                                         m_HR = mean(HR),
+#                                         m_age = (mean(age)))
+# #stats
+# # eliminating columns ####
+# stats <-
+#     stats %>% select(
+#         playerID,
+#         yearID,
+#         nameFirst,
+#         nameLast,
+#         age,
+#         theList,
+#         weight,
+#         birthYear,
+#         teamID,
+#         num_years,
+#         G,
+#         AB,
+#         H,
+#         HR
+#     )
+# # HR by at Bats ####
+# # must have at least one at bat!
+# stats <- stats %>% filter(AB > 0) %>% mutate(per_at_bat = HR / AB)
+# #view(stats)
+# # mean number of at bats per season ####
+# num_AB_per_season <-
+#     stats %>% filter(HR > 25) %>% group_by(yearID) %>% summarise(n = n(), mean(AB), mean(HR), min(AB), max(AB))
+# #view(num_AB_per_season)
+# # adding new stat to all batters HR per 500 at bats ####
+# stats <- stats %>% mutate(HR_per_500 = per_at_bat * 500)
+# top_seasons <-
+#     stats %>% filter(HR > 35, AB > 200) %>% arrange(desc(HR_per_500))
+# top_seasons <- head(top_seasons, 500)
+# sum_top <-
+#     top_seasons %>% group_by(., playerID, theList) %>% summarise(
+#         n = n(),
+#         max(HR),
+#         max(HR_per_500),
+#         min(HR_per_500),
+#         mean(HR_per_500),
+#         mean_age_per_top = mean(age)
+#     )
+# #view(sum_top %>% filter(n>4))
+# stats_grouped <-
+#     stats %>% group_by(playerID) %>% summarise(
+#         n = n(),
+#         car_mean_HR = mean(HR),
+#         car_mean_AB = mean(AB),
+#         car_mean_HRp500 = mean(HR_per_500)
+#     )
+# # sum_top_c data ####
+# sum_top_c <-
+#     merge(x = sum_top,
+#           y = stats_grouped,
+#           "playerID",
+#           all.x = TRUE) %>% mutate_if(is.numeric, round, digits = 1)
+# names(sum_top_c)[3] <- "n_yrs_top"
+# names(sum_top_c)[4] <- "Max_HR-T"
+# names(sum_top_c)[5] <- "Max_HR(500)-T"
+# names(sum_top_c)[6] <- "Min_HR(500)-T"
+# names(sum_top_c)[7] <- "Mean_HR(500)-T"
+# names(sum_top_c)[8] <- "Mean_Age-T"
+# names(sum_top_c)[9] <- "Total_Yrs"
+# names(sum_top_c)[10] <- "Mean_HR"
+# names(sum_top_c)[11] <- "Mean_AB"
+# names(sum_top_c)[12] <- "Mean_HR(500)"
+# 
+# #sum_top_c %>% mutate_if(is.numeric, round, digits = 0)
+# #view(sum_top_c %>% filter(n.x>4))
+# # HR breaks ####
+# breaks = c(0, 30, 40, 50, 80)
+# #added_HR_bin = cut(stats$HR, breaks=breaks, include.lowest=TRUE, right=FALSE)
+# added_HR_bin = stats %>% mutate(HR_bin = cut(
+#     stats$HR,
+#     breaks = breaks,
+#     include.lowest = TRUE,
+#     right = FALSE,
+#     labels = c("under 30", "30 to 40", "40 to 50", "over 50")
+# ))
+# added_HR_bin %>% group_by(HR_bin) %>% summarise(
+#     n = n(),
+#     m_HR = mean(HR),
+#     m_age = mean(age),
+#     min_age = min(age),
+#     max_age = max(age)
+# )
+# # max year ####
+# x = added_HR_bin %>% mutate(y_bin = cut(
+#     yearID,
+#     breaks = y,
+#     include.lowest = TRUE,
+#     right = FALSE
+# ))
+# max_hr_year_stat <-
+#     (x %>% filter(HR > 20) %>% group_by(playerID) %>% top_n(1, HR) %>% arrange(desc(HR)))
+# max_hr_year_stat
+# max_hr_year_stat %>% group_by(y_bin) %>% summarize(mean(age), mean(HR), n =
+#                                                        n())
+# view(max_hr_year_stat %>% group_by(y_bin, HR_bin) %>% summarize(mean(age), mean(HR), n =
+#                                                                     n()))
+# view(max_hr_year_stat)
+# scat_stat <-
+#     max_hr_year_stat %>% group_by(y_bin, HR_bin) %>% summarize(mean(age), mean(HR), n =
+#                                                                    n())
+# 
+# # Stats to select from ####
+# mean_age_of_all_batters <- added_HR_bin %>% summarise(mean(age))
+# mean_age_of_top_hr_hitters_ster_era <-
+#     added_HR_bin %>% filter(., HR > 50, yearID > 1993, yearID < 2006) %>% summarise(mean(age))
+# mean_age_of_top_not_ster_era <-
+#     added_HR_bin %>% filter(., HR > 50, yearID < 1994) %>% summarise(mean(age))
+# y = c(seq(1920, 2020, by = 5))
+# min_hr <- 10
+# batting_stats <- read.csv(file = 'data/batting.csv')
+# over_x_hr <- batting_stats %>% filter(., HR > min_hr)
+# # end of data setup
 # Define UI for application that draws a histogram
 #text1 <- ""
 # UI ####
@@ -247,7 +377,16 @@ ui <- navbarPage(
             titlePanel("Homeruns top year by age after 1994"),
             fluidRow(plotOutput("plot_hrbin_age"))
         )
-    )
+    ),
+    tabPanel(
+        "Player Path",
+        fluidPage(
+            titlePanel("Hitting the longball throughout the career"),
+            fluidRow(plotOutput("plot_player")
+                
+            )
+        )
+          )
 )
 # Define server logic required to draw a histogram
 # Server ####
@@ -342,7 +481,9 @@ server <- function(input, output) {
                        size = 4
                    ) +
             theme(legend.position = "top") + labs(x = "Homerun Bins", y =
-                                                      "Age of Top Year")
+                                                      "Age of Top Year")+
+            geom_hline(yintercept=30, linetype="dashed", 
+                       color = "red", size=2)
         if (input$adddots) {
             p + geom_dotplot(
                 binaxis = 'y',
@@ -368,7 +509,9 @@ server <- function(input, output) {
                        size = 4
                    ) +
             theme(legend.position = "bottom") + labs(x = "Homerun Bins", y =
-                                                         "Age of Top Year")#geom_dotplot(binaxis='y', stackdir='center', position=position_dodge(1))
+                                                         "Age of Top Year")+
+            geom_hline(yintercept=30, linetype="dashed", 
+                       color = "red", size=2)#geom_dotplot(binaxis='y', stackdir='center', position=position_dodge(1))
         if (input$adddots) {
             p + geom_dotplot(
                 binaxis = 'y',
@@ -378,6 +521,21 @@ server <- function(input, output) {
         } else{
             p
         }
+    })
+    output$plot_player <- renderPlot({
+        x4<-x %>% group_by(playerID) %>% mutate(tot_hr=sum(HR)) %>% arrange(desc(tot_hr))
+        #x4<-x4 %>% filter(age>=32) %>% mutate(hr_over_32=sum(HR))
+        #x4<-x4 %>% filter(age<32) %>% mutate(hr_under_32=sum(HR))
+        # x4 = x4 %>% filter(tot_hr>550) %>% mutate(age_bin = cut(
+        #     x4$age,
+        #     breaks = c(0,25,32),
+        #     include.lowest = TRUE,
+        #     right = FALSE,
+        #     labels = c("under 25", "25 to 31", "over 32")))
+        
+        ggplot(x4 %>% filter(tot_hr>550)%>% group_by(playerID) %>% arrange(desc(tot_hr)),
+               aes(x= reorder(playerID,-tot_hr), y=HR, fill=age))+geom_bar(stat="identity")+
+            scale_fill_gradient2(low='white', mid='yellow', high='blue')
     })
 }
 
