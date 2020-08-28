@@ -56,9 +56,10 @@ sum_top <-
         min(HR_per_500),
         mean(HR_per_500),
         mean_age_per_top = mean(age),
-        max_age=max(age)
+        max_age=max(age),
     )
 view(sum_top %>% filter(n>4))
+stats<-stats %>% mutate(HR_after_31=ifelse(age>31,HR,0))
 stats_grouped <-
     stats %>% group_by(playerID) %>% summarise(
         n = n(),
@@ -66,25 +67,33 @@ stats_grouped <-
         car_mean_AB = mean(AB),
         car_mean_HRp500 = mean(HR_per_500),
         tot_HR = sum(HR),
-        car_avg = mean(b_avg),
-        max_age = max(age)
+        car_avg = mean(b_avg)*100,
+        max_age = max(age),
+        HR_after_31 = sum(HR_after_31),
+        percent_after_31 = sum(HR_after_31/sum(HR)*100),
+        last_year = max(yearID)
     )
+view(stats)
 # sum_top_c data and change names####
 sum_top_c <-
     merge(x = sum_top,
           y = stats_grouped,
           "playerID",
           all.x = TRUE) %>% mutate_if(is.numeric, round, digits = 1)
+sum_top_c
 names(sum_top_c)[3] <- "n_yrs_top"
 names(sum_top_c)[4] <- "Max_HR-T"
 names(sum_top_c)[5] <- "Max_HR(500)-T"
 names(sum_top_c)[6] <- "Min_HR(500)-T"
 names(sum_top_c)[7] <- "Mean_HR(500)-T"
 names(sum_top_c)[8] <- "Mean_Age-T"
-names(sum_top_c)[9] <- "Total_Yrs"
-names(sum_top_c)[10] <- "Mean_HR"
-names(sum_top_c)[11] <- "Mean_AB"
-names(sum_top_c)[12] <- "Mean_HR(500)"
+names(sum_top_c)[9] <- "Max_age_in_top"
+names(sum_top_c)[10] <- "n_yrs"
+names(sum_top_c)[11] <- "Mean_HR"
+names(sum_top_c)[12] <- "Mean_AB"
+names(sum_top_c)[13] <- "Mean_HR(500)"
+sum_top_c<-sum_top_c %>% mutate(car_avg=car_avg/100, percent_after_31=percent_after_31/100)
+view(sum_top_c %>% filter(tot_HR>400))
 # HR breaks ####
 breaks = c(0, 30, 40, 50, 80)
 #added_HR_bin = cut(stats$HR, breaks=breaks, include.lowest=TRUE, right=FALSE)
@@ -358,7 +367,7 @@ server <- function(input, output) {
             theme(legend.position = "bottom") + labs(x = "Homerun Bins", y =
                                                          "Age of Top Year")+
             geom_hline(yintercept=30, linetype="dashed", 
-                       color = "red", size=2)#geom_dotplot(binaxis='y', stackdir='center', position=position_dodge(1))
+                       color = "red", size=2)
         if (input$adddots) {
             p + geom_dotplot(
                 binaxis = 'y',
@@ -371,15 +380,6 @@ server <- function(input, output) {
     })
     output$plot_player <- renderPlot({
         x4<-x %>% group_by(playerID) %>% mutate(tot_hr=sum(HR)) %>% arrange(desc(tot_hr))
-        #x4<-x4 %>% filter(age>=32) %>% mutate(hr_over_32=sum(HR))
-        #x4<-x4 %>% filter(age<32) %>% mutate(hr_under_32=sum(HR))
-        # x4 = x4 %>% filter(tot_hr>550) %>% mutate(age_bin = cut(
-        #     x4$age,
-        #     breaks = c(0,25,32),
-        #     include.lowest = TRUE,
-        #     right = FALSE,
-        #     labels = c("under 25", "25 to 31", "over 32")))
-        
         ggplot(x4 %>% filter(tot_hr>550)%>% group_by(playerID) %>% arrange(desc(tot_hr)),
                aes(x= reorder(playerID,-tot_hr), y=HR, fill=age))+geom_bar(stat="identity")+
             scale_fill_gradient2(low='white', mid='yellow', high='blue')
