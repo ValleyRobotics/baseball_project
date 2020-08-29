@@ -8,6 +8,10 @@ library(RSQLite)
 library(DT)
 library(shinythemes)
 library(shinydashboard)
+library(latticeExtra)
+library(plotly)
+library(viridis)
+#library(hrbrthemes)
 
 
 # data connection to db ####
@@ -93,7 +97,7 @@ names(sum_top_c)[11] <- "Mean_HR"
 names(sum_top_c)[12] <- "Mean_AB"
 names(sum_top_c)[13] <- "Mean_HR(500)"
 sum_top_c<-sum_top_c %>% mutate(car_avg=car_avg/100, percent_after_31=percent_after_31/100)
-view(sum_top_c %>% filter(tot_HR>400))
+
 # HR breaks ####
 breaks = c(0, 30, 40, 50, 80)
 #added_HR_bin = cut(stats$HR, breaks=breaks, include.lowest=TRUE, right=FALSE)
@@ -112,21 +116,23 @@ added_HR_bin %>% group_by(HR_bin) %>% summarise(
   max_age = max(age)
 )
 # max year ####
-y = c(seq(1920, 2020, by = 5))
+#y = c(seq(1920, 2020, by = 5))
+y=c(1919,1945, 1994,2006, 2020)
 x = added_HR_bin %>% mutate(y_bin = cut(
   yearID,
   breaks = y,
   include.lowest = TRUE,
-  right = FALSE
+  right = FALSE,
+  labels = c("1920_1945", "The_50yrs_before_roids", "during_steroids", "after_steroids")
 ))
 max_hr_year_stat <-
   (x %>% filter(HR > 20) %>% group_by(playerID) %>% top_n(1, HR) %>% arrange(desc(HR)))
 max_hr_year_stat
 max_hr_year_stat %>% group_by(y_bin) %>% summarize(mean(age), mean(HR), n =
                                                      n())
-scat_stat <-
-  max_hr_year_stat %>% group_by(y_bin, HR_bin) %>% summarize(mean(age), mean(HR), n =
-                                                               n())
+by_bins <-
+  x %>% group_by(y_bin, HR_bin) %>% summarize(mean(age), mean(HR), n =
+                                                               n()) %>% arrange(desc(HR_bin))
 # Stats to select from ####
 mean_age_of_all_batters <- added_HR_bin %>% summarise(mean(age))
 mean_age_of_top_hr_hitters_ster_era <-
@@ -137,4 +143,49 @@ min_hr <- 10
 batting_stats <- read.csv(file = 'data/batting.csv')
 over_x_hr <- batting_stats %>% filter(., HR > min_hr)
 # end of data setup
+# view data ####
+view(sum_top_c %>% filter(tot_HR>400))
+HR_31_before_and_after_1994 <- sum_top_c %>% filter(tot_HR>400) %>% mutate(yr_before_1994=ifelse(last_year<1994, TRUE, FALSE))
+head(HR_31_before_and_after_1994)
+#some graphing fun ####
+#by_bins<-x%>% filter(HR_bin!="under 30") %>% arrange(HR_bin)
+#x
+# cloud(n~HR_bin
+#       +y_bin, x, panel.3d.cloud=panel.3dbars, col.facet='grey', 
+#       xbase=0.4, ybase=0.4, scales=list(arrows=FALSE, col=1),
+#       par.settings = list(axis.line = list(col = "transparent")))
+# 
+# plot_ly(x, x=~y_bin, y=~HR_bin, z=~n, type="scatter3d", mode="markers", color=~y_bin)
+# 
+# # Point colors
+# marker <- list(color = ~y_bin, colorscale = c('#FFE1A1', '#683531'), 
+#                showscale = TRUE)
+# # Create the plot
+# p <- plot_ly(x, x = ~y_bin, y = ~HR_bin, z = count(n), marker = marker) %>%
+#   add_markers() %>%
+#   layout(
+#     scene = list(xaxis = list(title = 'Weight'),
+#                  yaxis = list(title = 'Gross horsepower'),
+#                  zaxis = list(title = '1/4 mile time'))
+#   )
+# p
+#by_bins
+
+by_bins %>% filter(HR_bin!="under 30") %>% ggplot(aes(fill=HR_bin, y=n, x=y_bin, label = n)) + 
+  geom_bar(position="stack", stat="identity") +
+  scale_fill_viridis(discrete = T) +
+  ggtitle("MLB Long Balls!") +
+  ylab("Number of palyers that hit at least 30 homeruns") +
+  xlab("Four different periods of baseball (20 years, 50 years, 11 years, and 14 years")+
+  geom_text(size = 4, position = position_stack(vjust = 0.5))
+  
+by_bins %>% filter(HR_bin!="under 30") %>% ggplot(aes(fill=HR_bin, y=n, x=HR_bin, label = n)) + 
+  geom_bar(position="dodge", stat="identity") +
+  scale_fill_viridis(discrete = T, option="E") +
+  facet_wrap(~y_bin) +
+  ggtitle("MLB Long Balls!") +
+  ylab("Number of palyers that hit at least 30 homeruns") +
+  xlab("Four different periods of baseball (20 years, 50 years, 11 years, and 14 years") +
+  geom_text(size = 4, position = position_stack(vjust = 0.5))
+
 

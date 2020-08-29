@@ -13,5 +13,5 @@ people.bats,
 
 from batting
 inner join people on batting.playerID = people.playerID
-where yearID > 1920 and num_years > 5
+where yearID > 1913 and num_years > 5
 ;
