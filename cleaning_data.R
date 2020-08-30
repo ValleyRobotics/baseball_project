@@ -25,6 +25,7 @@ connector <- function(con, db) {
 dbcon <- connector(con, "baseball_stats.db")
 as.data.frame(dbListTables(dbcon))
 stats <- dbReadTable(dbcon, 'bat_p')
+teams <- dbReadTable(dbcon, 'Teams')
 # The steroid list from - https://bleacherreport.com/articles/232808-steroidology-l-hoops-projects-all-104-players-on-the-2003-steroid-list ####
 the_list <- read_csv('steroid_list.csv')
 dbDisconnect(dbcon) # disconnect
@@ -160,13 +161,13 @@ over_x_hr <- batting_stats %>% filter(., HR > min_hr)
 HR_31_before_and_after_1994 <-
   sum_top_c %>% filter(tot_HR > 400) %>% mutate(yr_before_1994 = ifelse(last_year <
                                                                           1994, TRUE, FALSE))
-# word cloud data ####
+# new
 df1 <-
   stats %>% filter(theList == T) %>% mutate(words_ = paste(nameFirst, nameLast, " "))
 df1 <- df1 %>% select(words_, HR)
+# team stats ####
+teams <- teams %>% group_by(yearID) %>% summarise(avg_G=mean(G), n=n(), tot_HR=sum(HR), 
+                                                  avg_HR=mean(HR), avg_R=mean(R), b_avg=sum(H)/sum(AB))
+teams_adj <- teams %>% mutate(adj_avg_HR=(avg_HR/avg_G*162),adj_avg_R=(avg_R/avg_G*162))
+
 # end of data setup
-# UI ####
-# end of data setup
-
-
-
