@@ -14,6 +14,7 @@ dbcon <-connector(con, "baseball_stats.db")
 as.data.frame(dbListTables(dbcon))
 
 stats <- dbReadTable(dbcon, 'bat_p')
+team_stats <- dbReadTables(dbcon, '')
 the_list <- read_csv('steroid_list.csv')
 dbDisconnect(dbcon)
 # The steriod list from - https://bleacherreport.com/articles/232808-steroidology-l-hoops-projects-all-104-players-on-the-2003-steroid-list ####
