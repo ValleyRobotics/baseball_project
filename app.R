@@ -66,17 +66,32 @@ stats <-
 stats <-
     stats %>% filter(AB > 0) %>% mutate(per_at_bat = HR / AB, b_avg = (H / AB)) %>%
     mutate(theList = ifelse(is.na(theList), FALSE, TRUE)) %>%
-    mutate(HR_per_500 = per_at_bat * 500) %>% 
-    mutate(HR_after_31 = ifelse(age > 31, HR, 0)) %>% 
-    mutate(HR_bin = cut(HR, breaks = breaks_HR, include.lowest = TRUE, right = FALSE,
-    labels = c("under 30", "30 to 40", "40 to 50", "over 50"))) %>% 
-    mutate(y_bin = cut(yearID, breaks = breaks_yrs, include.lowest = TRUE, right = FALSE,
-    labels = c("1914_1945", "The_50yrs_before_roids", "during_steroids", "after_steroids")))
+    mutate(HR_per_500 = per_at_bat * 500) %>%
+    mutate(HR_after_31 = ifelse(age > 31, HR, 0)) %>%
+    mutate(HR_bin = cut(
+        HR,
+        breaks = breaks_HR,
+        include.lowest = TRUE,
+        right = FALSE,
+        labels = c("under 30", "30 to 40", "40 to 50", "over 50")
+    )) %>%
+    mutate(y_bin = cut(
+        yearID,
+        breaks = breaks_yrs,
+        include.lowest = TRUE,
+        right = FALSE,
+        labels = c(
+            "1914_1945",
+            "The_50yrs_before_roids",
+            "during_steroids",
+            "after_steroids"
+        )
+    ))
 # sum_top is the top 500 HR hitting seasons --> all have over 35 HR
-sum_top <-stats %>% filter(HR > 35, AB > 200) %>% 
-    arrange(desc(HR_per_500)) %>% 
-    top_n(500, HR_per_500)%>% 
-    group_by(., playerID, theList) %>% 
+sum_top <- stats %>% filter(HR > 35, AB > 200) %>%
+    arrange(desc(HR_per_500)) %>%
+    top_n(500, HR_per_500) %>%
+    group_by(., playerID, theList) %>%
     summarise(
         n = n(),
         max(HR),
@@ -84,7 +99,8 @@ sum_top <-stats %>% filter(HR > 35, AB > 200) %>%
         min(HR_per_500),
         mean(HR_per_500),
         mean_age_per_top = mean(age),
-        max_age = max(age))
+        max_age = max(age)
+    )
 stats_grouped <-
     stats %>% group_by(playerID, theList) %>% summarise(
         n = n(),
@@ -96,14 +112,15 @@ stats_grouped <-
         max_age = max(age),
         HR_after_31 = sum(HR_after_31),
         percent_after_31 = sum(HR_after_31 / sum(HR) * 100),
-        last_year = max(yearID)) %>%
-            mutate_if(is.numeric, round, digits = 1) %>%
-            mutate(percent_after_31 = percent_after_31 / 100, car_avg = car_avg / 100)
+        last_year = max(yearID)
+    ) %>%
+    mutate_if(is.numeric, round, digits = 1) %>%
+    mutate(percent_after_31 = percent_after_31 / 100, car_avg = car_avg / 100)
 sum_top_c <-
     merge(x = sum_top,
           y = stats_grouped,
           "playerID",
-          all.x = TRUE) 
+          all.x = TRUE)
 names(sum_top_c)[3] <- "n_yrs_top"
 names(sum_top_c)[4] <- "Max_HR_T"
 names(sum_top_c)[5] <- "Max_HR(500)-T"
@@ -115,7 +132,8 @@ names(sum_top_c)[11] <- "n_yrs"
 names(sum_top_c)[12] <- "Mean_HR"
 names(sum_top_c)[13] <- "Mean_AB"
 names(sum_top_c)[14] <- "Mean_HR(500)"
-sum_top_c <- sum_top_c %>% mutate("Mean_Age-T"=round(`Mean_Age-T`, digits = 1))
+sum_top_c <-
+    sum_top_c %>% mutate("Mean_Age-T" = round(`Mean_Age-T`, digits = 1))
 
 max_hr_year_stat <-
     (stats %>% filter(HR > 20) %>% group_by(playerID) %>% top_n(1, HR) %>% arrange(desc(HR)))
@@ -131,9 +149,10 @@ teams_adj <-
         tot_HR = sum(HR),
         avg_HR = mean(HR),
         avg_R = mean(R),
-        b_avg = sum(H) / sum(AB)) %>% 
+        b_avg = sum(H) / sum(AB)
+    ) %>%
     mutate(adj_avg_HR = (avg_HR / avg_G * 162),
-                 adj_avg_R = (avg_R / avg_G * 162))
+           adj_avg_R = (avg_R / avg_G * 162))
 
 # end of data setup
 # ** UI ** ####
@@ -199,15 +218,11 @@ ui <- navbarPage(
                     fluidRow(
                         h1("Hitting The Long Balls"),
                         align = "center",
-                        br(),
                         h3(textOutput("notes")),
-                        br(),
                         h3(textOutput("notes1")),
                         br(),
                         textOutput("notes2"),
-                        textOutput("notes3"),
-                        br(),
-                        textOutput("notes4")
+                        textOutput("notes3")
                     ),
                     width = 9,
                     fluidRow(),
@@ -227,7 +242,8 @@ ui <- navbarPage(
             fluidRow(
                 column(
                     10,
-                    "This table then has the top 500 seasons and number of times the top players have had one of these seasons"
+                    "This table then has the top 500 seasons and number of times
+                       the top players have had one of these seasons"
                 )
             ),
             fluidRow(br()),
@@ -253,11 +269,44 @@ ui <- navbarPage(
             fluidRow(plotOutput("plot_hrbin_age"))
         )
     ),
-    tabPanel("Not Sure!",
-             fluidPage(
-                 titlePanel("Hitting the longball throughout the career"),
-                 fluidRow(plotOutput("plot_player"))
-             )),
+    tabPanel(
+        "Homeruns Stacked",
+        fluidPage(
+            titlePanel("Hitting the longball throughout the career"),
+            fluidRow(
+                column(width = 1),
+                column(
+                    width = 2,
+                    checkboxInput(
+                        inputId = "showHR",
+                        label = "Show HR's in Chart",
+                        value = F
+                    )
+                ),
+                column(
+                    width = 3,
+                    sliderInput(
+                        inputId = "totHR_sld",
+                        label = "Total HR Range",
+                        min = 200,
+                        max = 800,
+                        value = c(550, 800),
+                        step = 50,
+                        sep = ''
+                    )
+                ),
+                column(
+                    width = 3,
+                    checkboxInput(
+                        inputId = 'durSteroid',
+                        label = 'Played during steroid era',
+                        value = F
+                    )
+                )
+            ),
+            fluidRow(plotOutput("plot_player"))
+        )
+    ),
     tabPanel("by Time Period",
              fluidPage(
                  titlePanel("Breaking it down by time period"),
@@ -305,37 +354,29 @@ ui <- navbarPage(
             " - - - All years were adjusted to represent the same number of games, 162 - - -"
         )
     ),
-    tabPanel("test",
-             fluidPage(
-                 sidebarLayout(sidebarPanel(fluidRow(
-                     column(6, selectInput(
-                         inputId = 'test',
-                         label = 1,
-                         choices = 1:5
-                     ))
-                 )),
-                 mainPanel(fluidRow(
-                     includeMarkdown("include.Rmd")
-                 )))
-             )),
-    tabPanel("Hex Plot",
-             fluidPage(sliderInput(
-                 "HRn",
-                 "Number of HRs:",
-                 min = 10,
-                 max = 50,
-                 value = 35
-             ),
-             sliderInput(
-                 "AGE_",
-                 "Age of Batter Hitting HR:",
-                 min = 18,
-                 max = 50,
-                 value = 20
-             ),
-                 fluidRow(),
-                 fluidRow(plotOutput("hex", width = 800, height = 600)
-                 ))),
+    tabPanel(
+        "Hex Plot",
+        fluidPage(
+            sliderInput(
+                "HRn",
+                "Number of HRs:",
+                min = 10,
+                max = 50,
+                value = 35
+            ),
+            sliderInput(
+                "AGE_",
+                "Age of Batter Hitting HR:",
+                min = 18,
+                max = 50,
+                value = 20
+            ),
+            fluidRow(),
+            fluidRow(plotOutput(
+                "hex", width = 800, height = 600
+            ))
+        )
+    ),
     # HR over age 31####
     tabPanel("HRs Over Age 31",
              fluidPage(
@@ -360,6 +401,20 @@ ui <- navbarPage(
                  fluidRow(plotOutput("over_31")),
                  fluidRow(DT::dataTableOutput("over31_tb"))
              )),
+    tabPanel(
+        "Summary",
+        fluidPage(
+            sliderInput(
+                "HR_Sum",
+                "Min Number of HR:",
+                min = 5,
+                max = 50,
+                value = 30
+            ),
+            fluidRow(),
+            DT::dataTableOutput("summary")
+        )
+    ),
     # What TAB ####
     tabPanel("what",
              fluidPage(
@@ -369,10 +424,13 @@ ui <- navbarPage(
                                       "That's a perfect square!")
                  ),
                  fluidRow()
-             ))
+             )),
+    tabPanel("The Code",
+             fluidPage(mainPanel(
+                 fluidRow(includeMarkdown("include.Rmd"))
+             )))
 )
 
-# Define server logic required to draw a histogram
 # Server ####
 server <- function(input, output) {
     plot_data <- reactive({
@@ -412,7 +470,6 @@ server <- function(input, output) {
                    lty = 2)
         }
     })
-    
     # output notes ####
     output$notes <-
         renderText({
@@ -434,23 +491,15 @@ server <- function(input, output) {
         renderText({
             paste0("and are said to be at the peak between 1994 to 2005 with up to 60% of players using")
         })
-    # output$notes4 <-
-    #     renderText({
-    #         paste0(
-    #             "Mean age of all batters ",
-    #             sprintf("%0.1f", mean_age_of_all_batters),
-    #             " * Batters > 50 HR in Steriod Era ",
-    #             sprintf("%0.1f", mean_age_of_top_hr_hitters_ster_era),
-    #             " * Batters > 50 HR before 1994 ",
-    #             sprintf("%0.1f", mean_age_of_top_not_ster_era)
-    #         )
-    #     })
-    # output per500 ####
     output$per500 <-
         DT::renderDataTable({
             DT::datatable(
                 sum_top_c  %>% filter(n_yrs_top > 3) %>% select(
-                    -"Max_HR_T",-"Max_HR(500)-T",-"Mean_HR(500)-T",-"Mean_AB",-"Min_HR(500)-T"
+                    -"Max_HR_T",
+                    -"Max_HR(500)-T",
+                    -"Mean_HR(500)-T",
+                    -"Mean_AB",
+                    -"Min_HR(500)-T"
                 ) %>% arrange(desc(percent_after_31)),
                 rownames = FALSE,
                 options = list(
@@ -458,9 +507,9 @@ server <- function(input, output) {
                     autoWidth = T,
                     searching = F
                 )
-            )%>% formatStyle('theList.x',
-                             target = 'row',
-                             backgroundColor = styleEqual(c(0, 1), c("#eb6e1f ", "#00AFBB")))
+            ) %>% formatStyle('theList.x',
+                              target = 'row',
+                              backgroundColor = styleEqual(c(0, 1), c("#eb6e1f ", "#00AFBB")))
         })
     output$plot_hrbin_hr <- renderPlot({
         p = ggplot(max_hr_year_stat %>% filter(yearID < 1995),
@@ -525,16 +574,46 @@ server <- function(input, output) {
         }
     })
     output$plot_player <- renderPlot({
-        stats %>% group_by(playerID) %>% mutate(tot_hr = sum(HR)) %>% arrange(desc(tot_hr)) %>%
-            filter(tot_hr > 550) %>% group_by(playerID) %>% arrange(desc(tot_hr)) %>% ggplot(aes(
-                x = reorder(playerID,-tot_hr),
+        p <-
+            stats %>% group_by(playerID, nameLast, theList)  %>% mutate(tot_hr = sum(HR)) %>% filter(between(tot_hr, input$totHR_sld[1], input$totHR_sld[2])) %>%
+            group_by(playerID) %>% arrange(age) %>%
+            ggplot(aes(
+                x = reorder(paste(playerID, nameLast, theList, sep = ' - '), -tot_hr),
                 y = HR,
-                fill = age
+                fill = HR,
+                height = "1000px"
             )) + geom_bar(stat = "identity") +
-            scale_fill_gradient2(low = 'white',
-                                 mid = 'yellow',
-                                 high = 'blue')
-    })
+            scale_fill_viridis_b() +
+            labs(
+                title = 'Total Homeruns Stacked by Season Homeruns',
+                fill = 'HR - Season',
+                x = 'Player ID - Name, Steroids List',
+                y = 'Total Homeruns',
+                hjust = 0.5
+            ) +
+            theme(plot.title = element_text(hjust = 0.5)) +
+            theme(axis.text.x = element_text(
+                angle = 45,
+                hjust = 1,
+                size = 15,
+                colour = "#00afbb"
+            )) +
+            theme(text = element_text(size = 25, colour = "#eb6e1f"))#ifelse(theList == T, "#00AFBB", "#eb6e1f")))
+        if (input$showHR) {
+            p + geom_text(
+                aes(label = HR),
+                position = position_stack(vjust = 0.5),
+                colour = "white",
+                size = 4
+            )
+        } else {
+            p
+        }
+        
+        #scale_fill_gradient2(low = 'grey',
+        #                    mid = 'lightblue',
+        #                   high = 'black')
+    }, height = 700)
     output$stacked_plot <- renderPlot({
         by_bins %>% filter(HR_bin != "under 30") %>%
             ggplot(aes(
@@ -560,7 +639,7 @@ server <- function(input, output) {
             )) +
             geom_bar(position = "dodge", stat = "identity") +
             scale_fill_viridis(discrete = T, option = "E") +
-            facet_wrap(~ y_bin) +
+            facet_wrap( ~ y_bin) +
             ggtitle("MLB Long Balls!") +
             ylab("Number of palyers that hit at least 30 homeruns") +
             xlab("Four different periods of baseball (20 years, 50 years, 11 years, and 14 years") +
@@ -596,8 +675,8 @@ server <- function(input, output) {
                 scale_y_continuous(
                     "Average HR per Team",
                     breaks = seq(25, 275, 50),
-                    sec.axis = sec_axis( ~ . + 500,
-                                         name = "Average Runs Scored per Team")
+                    sec.axis = sec_axis(~ . + 500,
+                                        name = "Average Runs Scored per Team")
                 )
         }
         p <-
@@ -631,25 +710,6 @@ server <- function(input, output) {
         )
         p
     })
-    
-    # getPage <- function() {
-    #     return(
-    #         tags$iframe(
-    #             src = "https://www.espn.com",
-    #             style = "width:100%;",
-    #             frameborder = "0",
-    #             id = "iframe",
-    #             height = "500px"
-    #         )
-    #     )
-    # }
-    # output$inc <- renderUI({
-    #     x <- input$test
-    #     print(x)
-    #     my_page <- print(getPage())
-    #     print(my_page)
-    #     my_page
-    # })
     output$stacked_roids <-
         DT::renderDataTable({
             DT::datatable(
@@ -661,10 +721,10 @@ server <- function(input, output) {
                     autoWidth = T,
                     searching = F
                 )
-            )%>% 
+            ) %>%
                 formatStyle('theList.x',
-                             target = 'row',
-                             backgroundColor = styleEqual(c(0, 1), c('lightgrey', 'lightblue')))
+                            target = 'row',
+                            backgroundColor = styleEqual(c(0, 1), c('lightgrey', 'lightblue')))
         })
     output$over_31 <- renderPlot({
         gg <-
@@ -695,62 +755,84 @@ server <- function(input, output) {
     output$counts <-
         renderPrint({
             (
-                stats_grouped %>% filter(tot_HR > input$t_HR) %>% group_by(theList) %>%  summarise(mean(HR_after_31), n =
-                                                                                                       n())
+                stats_grouped %>% filter(tot_HR > input$t_HR) %>% group_by(theList) %>%
+                    summarise(mean(HR_after_31), n = n())
             )
         })
+    output$summary <- DT::renderDataTable({
+        DT::datatable(
+            stats %>% filter(HR > input$HR_Sum) %>% select(theList, HR, weight, num_years, HR_after_31, HR_per_500) %>%
+                group_by(theList) %>% skim()
+        ) %>% formatStyle('theList',
+                          target = 'row',
+                          backgroundColor = styleEqual(c(0, 1), c("#eb6e1f ", "#00AFBB")))
+        
+    })
+    
+    
     output$square <- reactive({
         sqrt(as.numeric(input$num)) %% 1 == 0
     })
     #outputOptions(output, 'square', suspendWhenHidden = FALSE)
     output$hex <- renderPlot({
-    #HRn <- 40
-    xB <- 25
-    #aB <- 20
-    statsx <- stats %>% filter(HR>input$HRn, age>input$AGE_)
-    Year <- statsx$yearID
-    HRs <- statsx$HR
-    Age <-statsx$age
-    bin <- hexbin(Year, HRs, xbins=xB)
-    colors<-as.numeric(statsx$y_bin)
-    cols <- colorRampPalette(c("lightblue", "deepskyblue1", "yellow", "darkorchid4","darkblue","green", "orchid", "hotpink1","red", "tomato", 
-                               "dimgrey",'darkslategrey', 'midnightblue', 'black', 'black', 'black') )
-    plot(bin, main="Hexagonal Binning of Homeruns Over Years", legend = 1, colramp=function(n) cols(input$HRn))
-    })
-    output$s3d <- renderRglwidget({
-        rgl.open(useNull=T)
+        #HRn <- 40
+        xB <- 25
+        #aB <- 20
+        statsx <- stats %>% filter(HR > input$HRn, age > input$AGE_)
         Year <- statsx$yearID
         HRs <- statsx$HR
-        Age <-statsx$age
-        scatter3d(Year, HRs,Age, main='3d Scatterplot', surface=F, ellipsoid=T)
+        Age <- statsx$age
+        bin <- hexbin(Year, HRs, xbins = xB)
+        colors <- as.numeric(statsx$y_bin)
+        cols <-
+            colorRampPalette(
+                c(
+                    "lightblue",
+                    "deepskyblue1",
+                    "yellow",
+                    "darkorchid4",
+                    "darkblue",
+                    "green",
+                    "orchid",
+                    "hotpink1",
+                    "red",
+                    "tomato",
+                    "dimgrey",
+                    'darkslategrey',
+                    'midnightblue',
+                    'black',
+                    'black',
+                    'black'
+                )
+            )
+        plot(
+            bin,
+            main = "Hexagonal Binning of Homeruns Over Years",
+            legend = 1,
+            colramp = function(n)
+                cols(input$HRn)
+        )
+    })
+    output$s3d <- renderRglwidget({
+        rgl.open(useNull = T)
+        Year <- statsx$yearID
+        HRs <- statsx$HR
+        Age <- statsx$age
+        scatter3d(
+            Year,
+            HRs,
+            Age,
+            main = '3d Scatterplot',
+            surface = F,
+            ellipsoid = T
+        )
         #fit <- lm(z ~ x+y)
         rglwidget()
     })
-    # output$stacked_roids <- renderPlot({
-    #     stats_no_roids <- stats%>% filter(yearID < 1994, yearID > 2005, HR>20 ) %>% summarise(n=n(),mean(HR))
-    #     stats_roids <- stats%>% filter(yearID >= 1994, yearID <= 2005, HR>20 ) %>% summarise(n=n(),mean(HR))
-    # ggplot(aes(
-    #     fill = HR_bin,
-    #     y = n,
-    #     x = y_bin,
-    #     label = n
-    # )) +
-    # geom_bar(position = "stack", stat = "identity") +
-    # scale_fill_viridis(discrete = T) +
-    # ggtitle("MLB Long Balls!") +
-    # ylab("Number of palyers that hit at least 30 homeruns") +
-    # xlab("Four different periods of baseball (20 years, 50 years, 11 years, and 14 years") +
-    # geom_text(size = 4, position = position_stack(vjust = 0.5))
-    # })
-    
-    
-    # 1960's rules helped pitchers bigger strike zone 1968 was called year of the pitcher
-    # after 68, they lowered the pitching mound from 15 to 10 inches - strike zone lowered from top shoulders to armpits
-    # 1981 only 107 games strike year
-    # 1994 only 114 games strike year
-    # 1995 only 144 games strike year
-    
+    output$tstats <- renderText({
+        stats_wo <- stats %>% filter(theList == F, HR > 30)
+        stats_ws <- stats %>% filter(theList == T, HR > 30)
+    })
 }
-
 # Run the application
 shinyApp(ui = ui, server = server)

@@ -1,0 +1,79 @@
+---
+title: "include"
+author: "Paul Sprouse"
+date: "9/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# library ####
+library(shiny)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(DBI)
+library(RSQLite)
+library(DT)
+library(shinythemes)
+library(latticeExtra)
+library(plotly)
+library(viridis)
+library(tm)
+library(wordcloud)
+library(wordcloud2)
+library(RColorBrewer)
+library(markdown)
+```
+## Load Data
+Data from 4 tables was combined using SQL, here i connect to the database
+I also load a steriod list
+
+```{r}
+# data connection to db and Load steroid list####
+connector <- function(con, db) {
+    con <- dbConnect(SQLite(), db)
+    return (con)
+}
+dbcon <- connector(con, "baseball_stats.db")
+as.data.frame(dbListTables(dbcon))
+stats <- dbReadTable(dbcon, 'bat_p')
+teams <- dbReadTable(dbcon, 'Teams')
+# The steroid list from - https://bleacherreport.com/articles/232808-steroidology-l-hoops-projects-all-104-players-on-the-2003-steroid-list
+the_list <- read_csv('steroid_list.csv')
+dbDisconnect(dbcon) # disconnect
+# setting up data####
+# two data frames stats and the list - need to merge into one!
+the_list <- the_list %>% rename(nameLast = last, nameFirst = first)
+stats <- merge(x = stats,
+          y = the_list,
+          c("nameLast", "nameFirst"),
+          all.x = TRUE)
+stats <-
+    stats %>% select(
+        playerID,
+        yearID,
+        nameFirst,
+        nameLast,
+        age,
+        theList,
+        weight,
+        birthYear,
+        teamID,
+        num_years,
+        G,
+        AB,
+        H,
+        HR
+    )
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

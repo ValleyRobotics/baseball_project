@@ -7,7 +7,6 @@ library(DBI)
 library(RSQLite)
 library(DT)
 library(shinythemes)
-library(shinydashboard)
 library(latticeExtra)
 library(plotly)
 library(viridis)
@@ -16,8 +15,7 @@ library(wordcloud)
 library(wordcloud2)
 library(RColorBrewer)
 
-
-# data connection to db ####
+# data connection to db and Load steroid list####
 connector <- function(con, db) {
   con <- dbConnect(SQLite(), db)
   return (con)
@@ -26,18 +24,16 @@ dbcon <- connector(con, "baseball_stats.db")
 as.data.frame(dbListTables(dbcon))
 stats <- dbReadTable(dbcon, 'bat_p')
 teams <- dbReadTable(dbcon, 'Teams')
-# The steroid list from - https://bleacherreport.com/articles/232808-steroidology-l-hoops-projects-all-104-players-on-the-2003-steroid-list ####
+# The steroid list from - https://bleacherreport.com/articles/232808-steroidology-l-hoops-projects-all-104-players-on-the-2003-steroid-list
 the_list <- read_csv('steroid_list.csv')
 dbDisconnect(dbcon) # disconnect
 # setting up data####
 # two data frames stats and the list - need to merge into one!
 the_list <- the_list %>% rename(nameLast = last, nameFirst = first)
-stats <-
-  merge(x = stats,
-        y = the_list,
-        c("nameLast", "nameFirst"),
-        all.x = TRUE)
-# eliminating columns ####
+stats <- merge(x = stats,
+               y = the_list,
+               c("nameLast", "nameFirst"),
+               all.x = TRUE)
 stats <-
   stats %>% select(
     playerID,
@@ -57,18 +53,16 @@ stats <-
   )
 # HR by at Bats ####
 # must have at least one at bat!
-stats <-
-  stats %>% filter(AB > 0) %>% mutate(per_at_bat = HR / AB, b_avg = (H /
-                                                                       AB))
-stats <-
-  stats %>% mutate(theList = ifelse(is.na(theList), FALSE, TRUE))
-view(stats)
+stats <- stats %>% filter(AB > 0) %>% mutate(per_at_bat = HR / AB, b_avg = (H / AB))
+# setting up False for those not on the list instead of NA
+stats <- stats %>% mutate(theList = ifelse(is.na(theList), FALSE, TRUE))
 # mean number of at bats per season ####
 # used this to decide on how many at bats to use for a season
-num_AB_per_season <-
-  stats %>% filter(HR > 10) %>% group_by(yearID) %>% summarise(n = n(), mean(AB), mean(HR), min(AB), max(AB)) %>% arrange(desc(`mean(AB)`))
-num_AB_per_season
-mean(num_AB_per_season$`mean(AB)`) # 487 for at least 10 at bats -> using 500 for the data
+# no longer needed - 
+#num_AB_per_season <-
+#stats %>% filter(HR > 10) %>% group_by(yearID) %>% summarise(n = n(), mean(AB), mean(HR), min(AB), max(AB)) %>% arrange(desc(`mean(AB)`))
+#num_AB_per_season %>% arrange(desc(yearID))
+#mean(num_AB_per_season$`mean(AB)`) # 487 for at least 10 at bats -> using 500 for the data
 # adding new stat to all batters HR per 500 at bats ####
 stats <- stats %>% mutate(HR_per_500 = per_at_bat * 500)
 top_seasons <-
@@ -84,8 +78,9 @@ sum_top <-
     max_age = max(age),
   )
 stats <- stats %>% mutate(HR_after_31 = ifelse(age > 31, HR, 0))
+stats
 stats_grouped <-
-  stats %>% group_by(playerID) %>% summarise(
+  stats %>% group_by(playerID, theList) %>% summarise(
     n = n(),
     car_mean_HR = mean(HR),
     car_mean_AB = mean(AB),
@@ -117,7 +112,6 @@ names(sum_top_c)[13] <- "Mean_HR(500)"
 sum_top_c <-
   sum_top_c %>% mutate(car_avg = car_avg / 100, percent_after_31 = percent_after_31 /
                          100)
-
 # HR breaks ####
 breaks = c(0, 30, 40, 50, 80)
 #added_HR_bin = cut(stats$HR, breaks=breaks, include.lowest=TRUE, right=FALSE)
@@ -165,9 +159,44 @@ HR_31_before_and_after_1994 <-
 df1 <-
   stats %>% filter(theList == T) %>% mutate(words_ = paste(nameFirst, nameLast, " "))
 df1 <- df1 %>% select(words_, HR)
+stats %>% filter(theList == T) %>% mutate(words_ = paste(nameFirst, nameLast, " ")) %>% select(words_, HR)
 # team stats ####
-teams <- teams %>% group_by(yearID) %>% summarise(avg_G=mean(G), n=n(), tot_HR=sum(HR), 
-                                                  avg_HR=mean(HR), avg_R=mean(R), b_avg=sum(H)/sum(AB))
-teams_adj <- teams %>% mutate(adj_avg_HR=(avg_HR/avg_G*162),adj_avg_R=(avg_R/avg_G*162))
+teams <-
+  teams %>% group_by(yearID) %>% summarise(
+    avg_G = mean(G),
+    n = n(),
+    tot_HR = sum(HR),
+    avg_HR = mean(HR),
+    avg_R = mean(R),
+    b_avg = sum(H) / sum(AB)
+  )
+teams_adj <-
+  teams %>% mutate(adj_avg_HR = (avg_HR / avg_G * 162),
+                   adj_avg_R = (avg_R / avg_G * 162))
 
-# end of data setup
+stats_no_roids <- stats%>% filter(yearID < 1994, HR>30 ) %>% summarise(n=n(),mean(HR))
+
+x %>% group_by(y_bin, HR_bin) %>% summarise(mean(HR_per_500), mean(AB),n=n())
+                                                                                                  
+x   
+stats_plot <- stats_grouped %>% filter(tot_HR>400) %>% arrange(desc(HR_after_31))
+x %>% filter(HR_bin!='under 30', y_bin=='during_steroids')
+gg <- stats_grouped %>% filter(tot_HR>300) %>% arrange(desc(HR_after_31)) %>% ggplot(aes(x=HR_after_31, y=(tot_HR-HR_after_31)))+geom_point(aes(col=theList, size=tot_HR))
+gg
+
+install.packages('teamcolors')
+library(teamcolors)
+head(teamcolors)
+show_team_col('Houston Astros')
+show_team_col()
+teamcolors %>%
+  filter(grepl("New ", name)) %>% 
+  pull(logo) %>%
+  knitr::include_graphics()
+
+head(teams)
+head(teamcolors)
+teamcolors$league[teamcolors$league=='mlb']
+teamcolors %>% filter(league=='mlb', location=='Houston')
+#002d62    
+#eb6e1f
