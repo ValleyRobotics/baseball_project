@@ -596,10 +596,6 @@ server <- function(input, output) {
         } else {
             p
         }
-        
-        #scale_fill_gradient2(low = 'grey',
-        #                    mid = 'lightblue',
-        #                   high = 'black')
     }, height = 700)
     output$stacked_plot <- renderPlot({
         by_bins %>% filter(HR_bin != "under 30") %>%
@@ -632,14 +628,13 @@ server <- function(input, output) {
             xlab("Four different periods of baseball (20 years, 50 years, 11 years, and 14 years") +
             geom_text(size = 4, position = position_stack(vjust = 0.5))
     })
-    output$word_cloud <- renderWordcloud2(
+    output$word_cloud <- renderWordcloud2({
         wordcloud2(
             stats %>% filter(theList == T) %>% mutate(words_ = paste(nameFirst, nameLast, " ")) %>% select(words_, HR),
             size = .8,
             color = "random-light",
-            backgroundColor = "grey"
-        )
-    )
+            backgroundColor = "grey")
+    })
     output$team_plots <- renderPlot({
         p <-
             ggplot(data = teams_adj %>% filter(between(
@@ -738,7 +733,6 @@ server <- function(input, output) {
                               target = 'row',
                               backgroundColor = styleEqual(c(0, 1), c("#eb6e1f", "#00AFBB")))
         })
-    
     output$counts <-
         renderPrint({
             (
@@ -755,16 +749,11 @@ server <- function(input, output) {
                           backgroundColor = styleEqual(c(0, 1), c("#eb6e1f ", "#00AFBB")))
         
     })
-    
-    
     output$square <- reactive({
         sqrt(as.numeric(input$num)) %% 1 == 0
     })
-    #outputOptions(output, 'square', suspendWhenHidden = FALSE)
     output$hex <- renderPlot({
-        #HRn <- 40
         xB <- 25
-        #aB <- 20
         statsx <- stats %>% filter(HR > input$HRn, age > input$AGE_)
         Year <- statsx$yearID
         HRs <- statsx$HR

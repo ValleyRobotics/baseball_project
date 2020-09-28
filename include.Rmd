@@ -27,6 +27,7 @@ library(markdown)
 library(hexbin)
 library(scatterplot3d)
 library(rgl)
+library(skimr)
 ```
 ## Load Data
 Data from 4 tables was combined using SQL, here i connect to the database
