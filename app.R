@@ -18,6 +18,7 @@ library(markdown)
 library(hexbin)
 library(scatterplot3d)
 library(rgl)
+library(skimr)
 
 # data connection to db and Load steroid list####
 connector <- function(con, db) {
@@ -414,21 +415,7 @@ ui <- navbarPage(
             fluidRow(),
             DT::dataTableOutput("summary")
         )
-    ),
-    # What TAB ####
-    tabPanel("what",
-             fluidPage(
-                 fluidRow(
-                     selectInput("num", "Choose a number", 1:10),
-                     conditionalPanel(condition = "output.square",
-                                      "That's a perfect square!")
-                 ),
-                 fluidRow()
-             )),
-    tabPanel("The Code",
-             fluidPage(mainPanel(
-                 fluidRow(includeMarkdown("include.Rmd"))
-             )))
+    )
 )
 
 # Server ####
