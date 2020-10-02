@@ -31,6 +31,7 @@ stats <- dbReadTable(dbcon, 'bat_p')
 teams <- dbReadTable(dbcon, 'Teams')
 # The steroid list from - https://bleacherreport.com/articles/232808-steroidology-l-hoops-projects-all-104-players-on-the-2003-steroid-list
 the_list <- read_csv('steroid_list.csv')
+quotes <- read_csv('quotes.csv')
 dbDisconnect(dbcon) # disconnect
 # ** setting up data ** ####
 # HR breaks and yrs breaks
@@ -166,11 +167,15 @@ ui <- navbarPage(
             fluidRow(),
             titlePanel(
                 h1(
-                    "Over 100 players have been accused of taking steroids from the mid 90's until at least 2005!",
+                    "Everyone Loves The Long Ball",
                     align = "center"
                 )
             ),
-            fluidRow(),
+            #fluidRow(h4('What has changed?', align='center')),
+            fluidRow(h3("- Players that have hit more than 40 Homeruns in a Season! -", 
+                        align="center")),
+            fluidRow(h4('Are Players Hitting the Long Ball more in the last 25 Years?',
+                        align='center')),
             fluidRow(
                 wordcloud2Output("word_cloud", height = "600px", width = "90%"),
                 align = "center"
@@ -213,6 +218,11 @@ ui <- navbarPage(
                         label = "Add Lines for Steroid Years",
                         value = FALSE
                     ),
+                    checkboxInput(
+                        inputId = "per500ab",
+                        label = "Per 500 At Bats",
+                        value = FALSE
+                    ),
                     width = 3
                 ),
                 mainPanel(
@@ -222,12 +232,16 @@ ui <- navbarPage(
                         h3(textOutput("notes")),
                         h3(textOutput("notes1")),
                         br(),
-                        textOutput("notes2"),
-                        textOutput("notes3")
+                        h4("The Steroid Era is said to be from mid 90's until mid 2000's", align='center'),
+                        h4('estimates are said to be from 25% to over 60%', align='center'),
+                        h4("Does this explain the jump in HR's? Are players still hitting HR's at a high Rate?", alight='center')
+                        #textOutput("notes2"),
+                        #textOutput("notes3")
                     ),
                     width = 9,
                     fluidRow(),
-                    fluidRow(plotOutput("distPlot"), width = 12)
+                    fluidRow(plotOutput("distPlot"), width = 12),
+                    h4('Why? - More at Bats?, More Teams? Steroids?', align='center')
                 )
             )
         )
@@ -421,14 +435,15 @@ ui <- navbarPage(
 # Server ####
 server <- function(input, output) {
     plot_data <- reactive({
-        stats %>% filter(HR > input$min_hr)
+        stats %>% filter(ifelse(input$per500ab,HR_per_500 > input$min_hr, HR>input$min_hr))
     })
     output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
         x <- plot_data()[, 2]
+        # generate bins based on input$bins from ui.R
         bins <- seq(min(x), max(x), length.out = input$bins + 1)
         # draw the histogram with the specified number of bins
         #h3(textOutput("Dude"))
+        
         hist(
             x,
             breaks = bins,
@@ -630,7 +645,8 @@ server <- function(input, output) {
     })
     output$word_cloud <- renderWordcloud2({
         wordcloud2(
-            stats %>% filter(theList == T) %>% mutate(words_ = paste(nameFirst, nameLast, " ")) %>% select(words_, HR),
+            stats %>% filter(HR>40) %>% mutate(words_ = paste(nameFirst, nameLast, " ")) %>% 
+                select(words_, HR) %>% group_by(words_) %>% summarise(HR=sum(HR)),
             size = .8,
             color = "random-light",
             backgroundColor = "grey")
