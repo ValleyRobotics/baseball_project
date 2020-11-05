@@ -6,19 +6,15 @@ library(ggplot2)
 library(DBI)
 library(RSQLite)
 library(DT)
-library(shinythemes)
-library(latticeExtra)
-library(plotly)
-library(viridis)
+#library(plotly)
 library(tm)
 library(wordcloud)
 library(wordcloud2)
-library(RColorBrewer)
-library(markdown)
 library(hexbin)
-library(scatterplot3d)
-library(rgl)
 library(skimr)
+library(shinyjs)
+#library(viridisLite)
+#install.packages('viridisLite')
 
 # data connection to db and Load steroid list####
 connector <- function(con, db) {
@@ -158,40 +154,50 @@ teams_adj <-
 
 # end of data setup
 # ** UI ** ####
-ui <- navbarPage(
-    "MLB - Hitting With Juice",
+ui <- navbarPage(id = "tabs", fluid=T, collapsible = T,
+                 
+    title = "MLB - Hitting With Juice",
+    
     # Word Cloud ####
     tabPanel(
         "Word Cloud",
         fluidPage(
             fluidRow(),
-            titlePanel(
-                h1(
-                    "Everyone Loves The Long Ball",
-                    align = "center"
-                )
+            titlePanel(h1("Everyone Loves The Long Ball",
+                          align = "center")),
+            fluidRow(
+                h3("- Players that have hit more than 40 Homeruns in a Season! -",
+                   align = "center")
             ),
-            #fluidRow(h4('What has changed?', align='center')),
-            fluidRow(h3("- Players that have hit more than 40 Homeruns in a Season! -", 
-                        align="center")),
-            fluidRow(h4('Are Players Hitting the Long Ball more in the last 25 Years?',
+            fluidRow(
+                h4('Are Players Hitting the Long Ball more in the last 25 Years?',
+                   align = 'center')
+            ),
+            fluidRow(h4('Stats are from Baseball Reference', align='center')), 
+            fluidRow(h4('Steroid references are from bleacher report', align='center')),
+            fluidRow(h4('The aurthor of this app has no knowledge of anyone using steroids, 
+                        nor does he accuse anyone of using steroids!', 
+                        align='center')),
+            fluidRow(h4('Any perceived accusation of such things, is purely coincidence much like 
+                        the growth of a certain players head by the end of their career!', 
                         align='center')),
             fluidRow(
                 wordcloud2Output("word_cloud", height = "600px", width = "90%"),
                 align = "center"
-            ),
-            br(),
-            p()
-        )
+            ), br(), p())
     ),
     # Tab Long Ball ####
-    tabPanel(
-        "The Long Ball",
+    tabPanel("The Long Ball",
+      tags$style(type = 'text/css', 
+                 '.navbar { background-color: lightgrey;}',
+                 '.navbar-default .navbar-brand{color: darkorange;}',
+                 '.tab-panel{ background-color: white; color: black;}',
+                 '.navbar{ font-size: 14px;}'            
+        ),
+        
         fluidPage(
-            theme = shinytheme("united"),
-            # Application title
+            
             titlePanel("MLB Stats"),
-            # Sidebar with a slider input for number of bins
             sidebarLayout(
                 sidebarPanel(
                     sliderInput(
@@ -223,7 +229,11 @@ ui <- navbarPage(
                         label = "Per 500 At Bats",
                         value = FALSE
                     ),
-                    width = 3
+                    checkboxInput(
+                        inputId = "per_game_500ab",
+                        label = "Scales per 500 At Bats and if 30 Teams",
+                        value = FALSE
+                    ), width = 3
                 ),
                 mainPanel(
                     fluidRow(
@@ -232,62 +242,25 @@ ui <- navbarPage(
                         h3(textOutput("notes")),
                         h3(textOutput("notes1")),
                         br(),
-                        h4("The Steroid Era is said to be from mid 90's until mid 2000's", align='center'),
-                        h4('estimates are said to be from 25% to over 60%', align='center'),
-                        h4("Does this explain the jump in HR's? Are players still hitting HR's at a high Rate?", alight='center')
-                        #textOutput("notes2"),
-                        #textOutput("notes3")
-                    ),
-                    width = 9,
+                        h4("The Steroid Era is said to be from mid 90's until mid 2000's", align =
+                               'center'),
+                        h4('estimates are said to be from 25% to over 60%', align =
+                               'center'),
+                        h4(
+                            "Does this explain the jump in HR's? Are players still hitting HR's at a high Rate?",
+                            alight = 'center'
+                        )
+                       
+                    ), width = 9,
                     fluidRow(),
-                    fluidRow(plotOutput("distPlot"), width = 12),
-                    h4('Why? - More at Bats?, More Teams? Steroids?', align='center')
-                )
-            )
-        )
-    ),
-    # Tab Per 500 ####
-    tabPanel(
-        "Per 500 at Bats",
-        fluidPage(
-            titlePanel("Homeruns Per at Bat If They Had 500 at Bats"),
-            fluidRow(
-                column(10, "Player HR/AB*500 - makes all players on same playing field")
-            ),
-            fluidRow(
-                column(
-                    10,
-                    "This table then has the top 500 seasons and number of times
-                       the top players have had one of these seasons"
-                )
-            ),
-            fluidRow(br()),
-            fluidRow(column(12, DT::dataTableOutput("per500")))
-        )
-    ),
-    # Tab scat plot ####
-    tabPanel(
-        "Age At Best",
-        fluidPage(
-            titlePanel(
-                "Before 1995, How Old Was a Player When They Hit Their Most Homeruns in a Season?"
-            ),
-            titlePanel(
-                checkboxInput(
-                    inputId = "adddots",
-                    label = "Add age points",
-                    value = FALSE
-                )
-            ),
-            fluidRow(plotOutput("plot_hrbin_hr")),
-            titlePanel("1995 and on, Players Age of Most Homeruns?"),
-            fluidRow(plotOutput("plot_hrbin_age"))
-        )
-    ),
+                    fluidRow(plotOutput("distPlot"), width = 9),
+                    h4('Why? - More at Bats?, More Teams? Steroids?', align = 'center'))))
+        ),
+    # Homeruns Stacked ####
     tabPanel(
         "Homeruns Stacked",
         fluidPage(
-            titlePanel("Hitting the longball throughout the career"),
+            fluidRow(h1("Hitting the longball throughout their career", 'center')),
             fluidRow(
                 column(width = 1),
                 column(
@@ -309,31 +282,25 @@ ui <- navbarPage(
                         step = 50,
                         sep = ''
                     )
-                ),
-                column(
-                    width = 3,
-                    checkboxInput(
-                        inputId = 'durSteroid',
-                        label = 'Played during steroid era',
-                        value = F
-                    )
-                )
-            ),
-            fluidRow(plotOutput("plot_player"))
+                )),
+            fluidRow(plotOutput("plot_player")),
+            fluidRow(br()), fluidRow(br()), fluidRow(br()), fluidRow(br()),
+            fluidRow(br()), fluidRow(br()), fluidRow(br()), fluidRow(br()),
+            fluidRow(br()), fluidRow(br()), fluidRow(br()), fluidRow(br()),
+            fluidRow(br()), fluidRow(br()), fluidRow(br()), fluidRow(br()),
+            fluidRow(h4("One of the things that caught my attention, 
+                        is the number of HR's by players late in their careers 
+                        and played since 1995", align='center')),
+            fluidRow(h4("Another attention grabber, the amount of over 60 HR years are all 
+                        bunched around the same years", align='center'))
         )
     ),
-    tabPanel("by Time Period",
-             fluidPage(
-                 titlePanel("Breaking it down by time period"),
-                 tabsetPanel(
-                     tabPanel("Stacked Barplot", plotOutput("stacked_plot")),
-                     tabPanel("Wrapped Barplot", plotOutput("wrapped_plot"))
-                 )
-             )),
+    # Team Trends ####
     tabPanel(
         "Team Trends",
-        fluidPage("MLB HR and Run Trends from 1914 - 2019"),
-        titlePanel("Average HR and Runs per team adjusted for 162 games"),
+        
+        titlePanel(h1("Average HR and Runs per team adjusted for 162 games", align='center')),
+        fluidRow(column(4,
         sliderInput(
             "s_year",
             "Start/End Year",
@@ -342,7 +309,8 @@ ui <- navbarPage(
             value = c(1919, 2021),
             step = 10,
             sep = ""
-        ),
+        )),
+        column(4,
         checkboxInput(
             inputId = "addruns",
             label = "Add average runs per team per season",
@@ -352,12 +320,28 @@ ui <- navbarPage(
             inputId = "addavg",
             label = "Add batting average time 1000",
             value = FALSE
-        ),
-        plotOutput('team_plots'),
+        )),
+        column(4,
+               sliderInput(
+                   "HRn",
+                   "Number of HRs:",
+                   min = 10,
+                   max = 50,
+                   value = 35
+               ),
+               sliderInput(
+                   "AGE_",
+                   "Age of Batter Hitting HR:",
+                   min = 18,
+                   max = 50,
+                   value = 20
+        ))),
+        fluidRow(column(7,
+        plotOutput('team_plots')),
+        column(5, plotOutput("hex"))),
         br(),
-        p(
-            "-> over the 1960's the rules had been relaxed to help the pitchers by creating a bigger strike zone"
-        ),
+        p("-> over the 1960's the rules had been relaxed to help the pitchers by 
+          creating a bigger strike zone"),
         p("1968 was called year of the pitcher because they were so dominate"),
         p("after 68 they lowered the pitching mound from 15 to 10 inches"),
         p("and the strike zone was lowered from top of the shoulders to armpits"),
@@ -367,35 +351,11 @@ ui <- navbarPage(
         p("-> 1994 and 2005 are the red dotted lines - this is era in question"),
         p(
             " - - - All years were adjusted to represent the same number of games, 162 - - -"
-        )
-    ),
-    tabPanel(
-        "Hex Plot",
-        fluidPage(
-            sliderInput(
-                "HRn",
-                "Number of HRs:",
-                min = 10,
-                max = 50,
-                value = 35
-            ),
-            sliderInput(
-                "AGE_",
-                "Age of Batter Hitting HR:",
-                min = 18,
-                max = 50,
-                value = 20
-            ),
-            fluidRow(),
-            fluidRow(plotOutput(
-                "hex", width = 800, height = 600
-            ))
-        )
-    ),
+        )),
     # HR over age 31####
     tabPanel("HRs Over Age 31",
              fluidPage(
-                 fluidRow(
+                 fluidRow(column(3,
                      sliderInput(
                          "t_HR",
                          "Total HR",
@@ -405,17 +365,21 @@ ui <- navbarPage(
                          100,
                          ticks = TRUE,
                          dragRange = T
-                     ),
+                     )),
+                     column(3,
                      checkboxInput(
                          "totHR_HRpre31",
                          "Toggle bewteem total HRs or HR's before 32 on Y axis",
                          FALSE
-                     ),
+                     )),
+                     column(5,
                      verbatimTextOutput("counts")
-                 ),
-                 fluidRow(plotOutput("over_31")),
-                 fluidRow(DT::dataTableOutput("over31_tb"))
-             )),
+                 )),
+                 fluidRow(
+                     column(12,plotOutput("over_31")),
+                     column(9, DT::dataTableOutput("over31_tb"))
+             ))),
+    # Summary ####
     tabPanel(
         "Summary",
         fluidPage(
@@ -429,29 +393,133 @@ ui <- navbarPage(
             fluidRow(),
             DT::dataTableOutput("summary")
         )
-    )
+    ),
+    # Tab Per 500 ####
+    tabPanel(
+        "Data Frame For More Info",
+        fluidPage(theme = "bootstrap.css",
+            titlePanel("Homeruns Per at Bat If They Had 500 at Bats"),
+            fluidRow(
+                column(10, "Player HR/AB*500 - makes all players on same playing field")
+            ),
+            fluidRow(
+                column(
+                    10,
+                    "This table then has the top 500 seasons and number of times
+                       the top players have had one of these seasons"
+                )
+            ),
+            fluidRow(br()),
+            fluidRow(column(12, DT::dataTableOutput("per500"))))),
+    # tabPanel("by Time Period",
+    #          fluidPage(
+    #              titlePanel("Breaking it down by time period"),
+    #              tabsetPanel(
+    #                  tabPanel("Stacked Barplot", plotOutput("stacked_plot")),
+    #                  tabPanel("Wrapped Barplot", plotOutput("wrapped_plot"))))
+    #          ),
+    # Age at best ####
+    tabPanel(
+        "Age At Best",
+        fluidPage(
+            titlePanel(
+                "Before 1995, How Old Was a Player When They Hit Their Most Homeruns in a Season?"
+            ),
+            titlePanel(
+                checkboxInput(
+                    inputId = "adddots",
+                    label = "Add age points",
+                    value = FALSE)
+            ),
+            fluidRow(plotOutput("plot_hrbin_hr")),
+            titlePanel("1995 and on, Players Age of Most Homeruns?"),
+            fluidRow(plotOutput("plot_hrbin_age")))
+        ),
+    tabPanel('Code', 'just a friendly little old test', # q to show a to hide
+             useShinyjs(),
+        tags$script(HTML("$(function(){ 
+      $(document).keyup(function(e) {
+      if (e.which == 81) {
+        $('#showTab').click()
+      }
+      if (e.which == 65) {
+        $('#hideTab').click()
+      }
+      });
+      })")),
+        
+        actionButton('hideTab', "Hide 'code' tab"),
+        actionButton("showTab", "Show 'code' tab")
+    ),
+    # OddsProb ####
+    tabPanel('OddsProb',
+             fluidPage(
+               fluidRow(style = "border: 4px double red;",
+                 column(4,
+               textInput(
+                 inputId = 'odds',
+                 label = 'The Vegas Odds',
+                 value = 0),
+               textInput(
+                 inputId = 'bet',
+                 label = 'Bet amount',
+                 value = 100)),
+               column(5, br(),
+               textOutput('impliedOdds'),
+               textOutput('win'),
+               textOutput('payout'))),
+               fluidRow(
+               actionButton('runIt', 'Run It')
+             )))
 )
 
 # Server ####
 server <- function(input, output) {
+    # Plot Data ####
     plot_data <- reactive({
-        stats %>% filter(ifelse(input$per500ab,HR_per_500 > input$min_hr, HR>input$min_hr))
+        stats %>% filter(HR > input$min_hr)#
+        #ifelse(input$per500ab==T,HR_per_500 > input$min_hr, HR>input$min_hr))
     })
+    plot_data500 <- reactive({
+        stats %>% filter(HR_per_500 > input$min_hr)#
+        #ifelse(input$per500ab==T,HR_per_500 > input$min_hr, HR>input$min_hr))
+    })
+    plot_data500_per_team <- reactive({
+        #print(stats)
+        stats %>% group_by(yearID) %>%
+            summarise(
+                n_factor = 1 / n_distinct(teamID) * 30,
+                n = n_distinct(teamID),
+                n1 = (sum(HR_per_500 > input$min_hr) * n_factor)
+            ) %>%
+            ungroup() %>% select(yearID, n1)
+    })
+    # distPlot ####
     output$distPlot <- renderPlot({
-        x <- plot_data()[, 2]
+        if (input$per500ab) {
+            x <- plot_data500()[, 2]
+        } else {
+            x <- plot_data()[, 2]
+        }
+        if (input$per_game_500ab) {
+            x <- plot_data500_per_team()
+        }
         # generate bins based on input$bins from ui.R
         bins <- seq(min(x), max(x), length.out = input$bins + 1)
-        # draw the histogram with the specified number of bins
-        #h3(textOutput("Dude"))
         
-        hist(
-            x,
-            breaks = bins,
-            col = 'blue',
-            border = 'white',
-            xlab = "Years",
-            main = "Number of players hitting at Least selected homeruns"
-        )#, title = 'Number of HR seasons')
+        if (input$per_game_500ab) {
+            plot(x)
+            
+        } else{
+            hist(
+                x,
+                breaks = bins,
+                col = 'blue',
+                border = 'white',
+                xlab = "Years",
+                main = "Number of players hitting at Least selected homeruns"
+            )#, title = 'Number of HR seasons')
+        }
         if (input$addsteroidyears) {
             abline(
                 v = 1994,
@@ -467,9 +535,11 @@ server <- function(input, output) {
             )
         }
         if (input$addmedian) {
-            abline(v = median(x),
-                   lwd = 2,
-                   lty = 2)
+            if (input$per_game_500ab == F) {
+                abline(v = median(x),
+                       lwd = 2,
+                       lty = 2)
+            }
         }
     })
     # output notes ####
@@ -493,15 +563,12 @@ server <- function(input, output) {
         renderText({
             paste0("and are said to be at the peak between 1994 to 2005 with up to 60% of players using")
         })
+    # per500 ####
     output$per500 <-
         DT::renderDataTable({
             DT::datatable(
                 sum_top_c  %>% filter(n_yrs_top > 3) %>% select(
-                    -"Max_HR_T",
-                    -"Max_HR(500)-T",
-                    -"Mean_HR(500)-T",
-                    -"Mean_AB",
-                    -"Min_HR(500)-T"
+                    -"Max_HR_T",-"Max_HR(500)-T",-"Mean_HR(500)-T",-"Mean_AB",-"Min_HR(500)-T"
                 ) %>% arrange(desc(percent_after_31)),
                 rownames = FALSE,
                 options = list(
@@ -513,6 +580,7 @@ server <- function(input, output) {
                               target = 'row',
                               backgroundColor = styleEqual(c(0, 1), c("#eb6e1f ", "#00AFBB")))
         })
+    # plot_hrbin_hr ####
     output$plot_hrbin_hr <- renderPlot({
         p = ggplot(max_hr_year_stat %>% filter(yearID < 1995),
                    aes(
@@ -520,7 +588,7 @@ server <- function(input, output) {
                        y = age,
                        fill = HR_bin
                    )) + geom_boxplot() + stat_summary(
-                       fun.y = mean,
+                       fun = mean,
                        geom = "point",
                        shape = 23,
                        size = 4
@@ -543,7 +611,7 @@ server <- function(input, output) {
             p
         }
     })
-    # plot HR Bin ####
+    # plot HR Bin Age ####
     output$plot_hrbin_age <- renderPlot({
         p <-
             ggplot(max_hr_year_stat %>% filter(yearID > 1994),
@@ -552,7 +620,7 @@ server <- function(input, output) {
                        y = age,
                        fill = HR_bin
                    )) + geom_boxplot() + stat_summary(
-                       fun.y = mean,
+                       fun = mean,
                        geom = "point",
                        shape = 23,
                        size = 4
@@ -575,22 +643,24 @@ server <- function(input, output) {
             p
         }
     })
+    # plot_player ####
     output$plot_player <- renderPlot({
         p <-
-            stats %>% group_by(playerID, nameLast, theList)  %>% mutate(tot_hr = sum(HR)) %>% filter(between(tot_hr, input$totHR_sld[1], input$totHR_sld[2])) %>%
+            stats %>% group_by(playerID, nameLast, theList)  %>% mutate(tot_hr = sum(HR)) %>% 
+            filter(between(tot_hr, input$totHR_sld[1], input$totHR_sld[2])) %>%
             group_by(playerID) %>% arrange(age) %>%
             ggplot(aes(
-                x = reorder(paste(playerID, nameLast, theList, sep = ' - '), -tot_hr),
+                x = reorder(paste(playerID, nameLast, theList, sep = ' - '),-tot_hr),
                 y = HR,
                 fill = HR,
-                height = "1000px"
+                height = "1500px"
             )) + geom_bar(stat = "identity") +
-            scale_fill_viridis_b() +
+            scale_color_gradient(low='lightblue', high='blue') +
             labs(
-                title = 'Total Homeruns Stacked by Season Homeruns',
+                title = 'Total Homeruns Stacked by Season',
                 fill = 'HR - Season',
-                x = 'Player ID - Name, Steroids List',
-                y = 'Total Homeruns',
+                x = 'Players - True-False from bleacher report Steroid List',
+                y = "HR's, stacked first season on bottom",
                 hjust = 0.5
             ) +
             theme(plot.title = element_text(hjust = 0.5)) +
@@ -612,21 +682,23 @@ server <- function(input, output) {
             p
         }
     }, height = 700)
-    output$stacked_plot <- renderPlot({
-        by_bins %>% filter(HR_bin != "under 30") %>%
-            ggplot(aes(
-                fill = HR_bin,
-                y = n,
-                x = y_bin,
-                label = n
-            )) +
-            geom_bar(position = "stack", stat = "identity") +
-            scale_fill_viridis(discrete = T) +
-            ggtitle("MLB Long Balls!") +
-            ylab("Number of palyers that hit at least 30 homeruns") +
-            xlab("Four different periods of baseball (20 years, 50 years, 11 years, and 14 years") +
-            geom_text(size = 4, position = position_stack(vjust = 0.5))
-    })
+    # Stacked_plot ####
+    # output$stacked_plot <- renderPlot({
+    #     by_bins %>% filter(HR_bin != "under 30") %>%
+    #         ggplot(aes(
+    #             fill = HR_bin,
+    #             y = n,
+    #             x = y_bin,
+    #             label = n
+    #         )) +
+    #         geom_bar(position = "stack", stat = "identity") +
+    
+    #         ggtitle("MLB Long Balls!") +
+    #         ylab("Number of palyers that hit at least 30 homeruns") +
+    #         xlab("Four different periods of baseball (20 years, 50 years, 11 years, and 14 years") +
+    #         geom_text(size = 4, position = position_stack(vjust = 0.5))
+    # })
+    # wrapped_plot ####
     output$wrapped_plot <- renderPlot({
         by_bins %>% filter(HR_bin != "under 30") %>%
             ggplot(aes(
@@ -636,21 +708,25 @@ server <- function(input, output) {
                 label = n
             )) +
             geom_bar(position = "dodge", stat = "identity") +
-            scale_fill_viridis(discrete = T, option = "E") +
-            facet_wrap( ~ y_bin) +
+#            #scale_fill_viridis(discrete = T, option = "E") +
+            facet_wrap(~ y_bin) +
             ggtitle("MLB Long Balls!") +
             ylab("Number of palyers that hit at least 30 homeruns") +
             xlab("Four different periods of baseball (20 years, 50 years, 11 years, and 14 years") +
             geom_text(size = 4, position = position_stack(vjust = 0.5))
     })
+    # word_cloud ####
     output$word_cloud <- renderWordcloud2({
         wordcloud2(
-            stats %>% filter(HR>40) %>% mutate(words_ = paste(nameFirst, nameLast, " ")) %>% 
-                select(words_, HR) %>% group_by(words_) %>% summarise(HR=sum(HR)),
+            stats %>% filter(HR > 40) %>% mutate(words_ = paste(nameFirst, nameLast, " ")) %>%
+                select(words_, HR) %>% group_by(words_) %>% summarise(HR =
+                                                                          sum(HR)),
             size = .8,
             color = "random-light",
-            backgroundColor = "grey")
+            backgroundColor = "grey"
+        )
     })
+    # team_plots ####
     output$team_plots <- renderPlot({
         p <-
             ggplot(data = teams_adj %>% filter(between(
@@ -673,12 +749,10 @@ server <- function(input, output) {
                 scale_y_continuous(
                     "Average HR per Team",
                     breaks = seq(25, 275, 50),
-                    sec.axis = sec_axis(~ . + 500,
-                                        name = "Average Runs Scored per Team")
-                )
-        }
-        p <-
-            p + geom_vline(
+                    sec.axis = sec_axis( ~ . + 500,
+                                         name = "Average Runs Scored per Team")
+                )}
+        p <- p + geom_vline(
                 xintercept = c(1994, 2005),
                 linetype = "dashed",
                 color = "red",
@@ -708,6 +782,7 @@ server <- function(input, output) {
         )
         p
     })
+    # stacked_roids ####
     output$stacked_roids <-
         DT::renderDataTable({
             DT::datatable(
@@ -720,10 +795,11 @@ server <- function(input, output) {
                     searching = F
                 )
             ) %>%
-                formatStyle('theList.x',
+                formatStyle((last_year>1994),
                             target = 'row',
                             backgroundColor = styleEqual(c(0, 1), c('lightgrey', 'lightblue')))
-        })
+        }) 
+    # over_31 ####
     output$over_31 <- renderPlot({
         gg <-
             stats_grouped %>% filter(tot_HR > input$t_HR) %>% arrange(desc(HR_after_31)) %>%
@@ -732,7 +808,7 @@ server <- function(input, output) {
                                (tot_HR - HR_after_31)
                            } else{
                                tot_HR
-                           })) + geom_point(aes(col = theList, size = tot_HR)) + scale_fill_manual(values = c("#00AFBB", "#eb6e1f"))
+                           })) + geom_point(aes(col = (last_year>1994), size = tot_HR)) + scale_fill_manual(values = c("#00AFBB", "#eb6e1f"))
         gg
     })
     output$over31_tb <-
@@ -749,6 +825,7 @@ server <- function(input, output) {
                               target = 'row',
                               backgroundColor = styleEqual(c(0, 1), c("#eb6e1f", "#00AFBB")))
         })
+    # counts ####
     output$counts <-
         renderPrint({
             (
@@ -756,6 +833,7 @@ server <- function(input, output) {
                     summarise(mean(HR_after_31), n = n())
             )
         })
+    # Summary ####
     output$summary <- DT::renderDataTable({
         DT::datatable(
             stats %>% filter(HR > input$HR_Sum) %>% select(theList, HR, weight, num_years, HR_after_31, HR_per_500) %>%
@@ -765,9 +843,8 @@ server <- function(input, output) {
                           backgroundColor = styleEqual(c(0, 1), c("#eb6e1f ", "#00AFBB")))
         
     })
-    output$square <- reactive({
-        sqrt(as.numeric(input$num)) %% 1 == 0
-    })
+    
+    # Hex ####
     output$hex <- renderPlot({
         xB <- 25
         statsx <- stats %>% filter(HR > input$HRn, age > input$AGE_)
@@ -805,25 +882,55 @@ server <- function(input, output) {
                 cols(input$HRn)
         )
     })
-    output$s3d <- renderRglwidget({
-        rgl.open(useNull = T)
-        Year <- statsx$yearID
-        HRs <- statsx$HR
-        Age <- statsx$age
-        scatter3d(
-            Year,
-            HRs,
-            Age,
-            main = '3d Scatterplot',
-            surface = F,
-            ellipsoid = T
-        )
-        #fit <- lm(z ~ x+y)
-        rglwidget()
-    })
+    
+    # output stats - finish and add tab ####
     output$tstats <- renderText({
         stats_wo <- stats %>% filter(theList == F, HR > 30)
         stats_ws <- stats %>% filter(theList == T, HR > 30)
+    })
+    # Starts with these Tabs hidden ####
+    observe(hideTab(inputId = "tabs", target = 'Code'))
+    observe(hideTab(inputId = "tabs", target = 'Age At Best'))
+    observe(hideTab(inputId = "tabs", target = 'by Time Period'))
+    observe(hideTab(inputId = "tabs", target = 'Data Frame For More Info'))
+    observe(hideTab(inputId = "tabs", target = 'OddsProb'))
+    
+    # Hide Tabs - a key ####
+    observeEvent(input$hideTab, {
+        hideTab(inputId = "tabs", target = 'Code')
+        hideTab(inputId = "tabs", target = 'Age At Best')
+        hideTab(inputId = "tabs", target = 'by Time Period')
+        hideTab(inputId = "tabs", target = 'Data Frame For More Info')
+        hideTab(inputId = "tabs", target = 'OddsProb')
+    })
+    # Show Tabs = q key ####
+    observeEvent(input$showTab, {
+        showTab(inputId = "tabs", target = 'Code')
+        showTab(inputId = "tabs", target = 'Age At Best')
+        showTab(inputId = "tabs", target = 'by Time Period')
+        showTab(inputId = "tabs", target = 'Data Frame For More Info')
+        showTab(inputId = "tabs", target = 'OddsProb')
+    })
+    # calculating Odds - Not Used in this project - Just for Fun ####
+    observeEvent(input$runIt, {
+      bet <- as.numeric(input$bet)
+      odds <- as.numeric(input$odds)
+      win <- if (odds < 0){
+        bet*(-100 / odds)
+      } else {
+        bet * (odds / 100)
+      }
+      impliedOdds <- if(odds<0){
+        odds/(100 - odds) * -1
+      } else{
+        1 - (odds / (100 + odds))
+      }
+      impliedOdds <- scales::percent(impliedOdds,accuracy=0.01)
+        
+      payOut <- win + bet
+      output$win <- renderText({paste0('to Win! : $', sprintf(win, fmt = '%#.2f'))})
+      output$impliedOdds <- renderText({paste0('Implied Odds! : ', impliedOdds)})
+      output$payout <- renderText({paste0('Payout! : $', sprintf(payOut, fmt = '%#.2f'))})
     })
 }
 # Run the application
